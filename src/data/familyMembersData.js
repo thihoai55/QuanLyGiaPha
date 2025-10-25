@@ -16,10 +16,12 @@ export const familyMembersData = [
     phone: 'Không có',
     email: 'Không có',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'married',
     spouse: {
       id: 'g1-1-s',
       name: 'Trần Thị Lan',
       gender: 'female',
+      generation: 1,
       birthYear: 1925,
       deathYear: 2005,
       age: 80,
@@ -29,7 +31,8 @@ export const familyMembersData = [
       job: 'Nội trợ',
       phone: 'Không có',
       email: 'Không có',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+      marriageStatus: 'married'
     },
     children: ['g2-1', 'g2-2'],
     parents: [],
@@ -51,10 +54,12 @@ export const familyMembersData = [
     phone: '0912345678',
     email: 'nguyenvanbinh@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'married',
     spouse: {
       id: 'g2-1-s',
       name: 'Trần Thị Mai',
       gender: 'female',
+      generation: 2,
       birthYear: 1948,
       age: 76,
       birthDate: '12/11/1948',
@@ -62,7 +67,8 @@ export const familyMembersData = [
       job: 'Giáo viên',
       phone: '0923456789',
       email: 'tranthimai@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face'
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+      marriageStatus: 'married'
     },
     children: ['g3-1', 'g3-2'],
     parents: ['g1-1'],
@@ -82,10 +88,12 @@ export const familyMembersData = [
     phone: '0934567890',
     email: 'nguyenthihua@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'married',
     spouse: {
       id: 'g2-2-s',
       name: 'Hoàng Văn Minh',
       gender: 'male',
+      generation: 2,
       birthYear: 1948,
       age: 76,
       birthDate: '25/03/1948',
@@ -93,7 +101,8 @@ export const familyMembersData = [
       job: 'Kỹ sư',
       phone: '0945678901',
       email: 'hoangvanminh@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face'
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+      marriageStatus: 'married'
     },
     children: ['g3-3'],
     parents: ['g1-1'],
@@ -115,10 +124,12 @@ export const familyMembersData = [
     phone: '0956789012',
     email: 'nguyenvandung@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'married',
     spouse: {
       id: 'g3-1-s',
       name: 'Lê Thị Hương',
       gender: 'female',
+      generation: 3,
       birthYear: 1972,
       age: 52,
       birthDate: '22/04/1972',
@@ -126,7 +137,8 @@ export const familyMembersData = [
       job: 'Bác sĩ',
       phone: '0967890123',
       email: 'lethihuong@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+      marriageStatus: 'married'
     },
     children: ['g4-1', 'g4-2'],
     parents: ['g2-1'],
@@ -146,10 +158,12 @@ export const familyMembersData = [
     phone: '0978901234',
     email: 'nguyenthilinh@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'divorced', // Đã ly hôn - có thể thêm vợ/chồng mới
     spouse: {
       id: 'g3-2-s',
       name: 'Phạm Văn Tuấn',
       gender: 'male',
+      generation: 3,
       birthYear: 1973,
       age: 51,
       birthDate: '18/06/1973',
@@ -157,7 +171,8 @@ export const familyMembersData = [
       job: 'Doanh nhân',
       phone: '0989012345',
       email: 'phamvantuan@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face'
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+      marriageStatus: 'divorced'
     },
     children: [],
     parents: ['g2-1'],
@@ -177,10 +192,12 @@ export const familyMembersData = [
     phone: '0990123456',
     email: 'hoangvannam@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'married',
     spouse: {
       id: 'g3-3-s',
       name: 'Vũ Thị Thảo',
       gender: 'female',
+      generation: 3,
       birthYear: 1982,
       age: 42,
       birthDate: '14/08/1982',
@@ -188,7 +205,8 @@ export const familyMembersData = [
       job: 'Giáo viên',
       phone: '0901234567',
       email: 'vuthithao@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face'
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+      marriageStatus: 'married'
     },
     children: ['g4-3'],
     parents: ['g2-2'],
@@ -210,6 +228,7 @@ export const familyMembersData = [
     phone: '0912345678',
     email: 'nguyenvangiang@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'single', // Chưa kết hôn - có thể thêm vợ/chồng
     spouse: null,
     children: [],
     parents: ['g3-1'],
@@ -229,6 +248,7 @@ export const familyMembersData = [
     phone: '0923456789',
     email: 'nguyenthimai@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'single', // Chưa kết hôn - có thể thêm vợ/chồng
     spouse: null,
     children: [],
     parents: ['g3-1'],
@@ -248,6 +268,7 @@ export const familyMembersData = [
     phone: '0934567890',
     email: 'hoangvanan@gmail.com',
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'single', // Chưa kết hôn - có thể thêm vợ/chồng
     spouse: null,
     children: [],
     parents: ['g3-3'],
@@ -318,4 +339,88 @@ export const getLocationStats = () => {
     stats[member.address]++;
   });
   return stats;
+};
+
+// Build a hierarchical family tree from the flat `familyMembersData` list.
+export const buildFamilyTree = (members = familyMembersData) => {
+  console.log("Starting buildFamilyTree with members:", members);
+  if (!Array.isArray(members)) {
+    console.error("Invalid input: members must be an array");
+    return null;
+  }
+
+  // Create id -> node map
+  const map = new Map();
+  
+  // First pass: Create all nodes with basic properties
+  members.forEach(m => {
+    if (!m || !m.id) {
+      console.error("Invalid member:", m);
+      return;
+    }
+    const node = {
+      ...m,
+      children: [],
+      spouseLinks: [],
+      marriageStatus: m.marriageStatus || 'single'
+    };
+    map.set(m.id, node);
+    console.log("Created node for member:", m.id, node);
+  });
+
+  // Second pass: Set up relationships
+  members.forEach(m => {
+    const node = map.get(m.id);
+    
+    // Set up spouse links
+    if (m.spouse) {
+      const spouseLink = {
+        id: m.spouse.id,
+        status: m.spouse.marriageStatus || m.marriageStatus || 'married',
+        side: 'right',
+        data: { ...m.spouse },
+        children: [],
+        isActiveMarriage: m.marriageStatus === 'married'
+      };
+      node.spouseLinks = [spouseLink];
+      delete node.spouse; // Remove old spouse property
+    }
+
+    // Set up children
+    if (Array.isArray(m.children)) {
+      m.children.forEach(childId => {
+        const childNode = map.get(childId);
+        if (childNode) {
+          // Update child's generation
+          childNode.generation = (node.generation || 0) + 1;
+          
+          // Add child to appropriate location
+          if (node.spouseLinks && node.spouseLinks.length > 0 && node.marriageStatus === 'married') {
+            // Add to active marriage's children
+            node.spouseLinks[0].children.push(childNode);
+          } else {
+            // Add to direct children
+            node.children.push(childNode);
+          }
+        }
+      });
+    }
+  });
+
+  console.log("Processed nodes:", Array.from(map.values()));
+
+  // Find root node (generation 1 or no parents)
+  let root = Array.from(map.values()).find(node => 
+    node.generation === 1 || (node.parents && node.parents.length === 0)
+  );
+
+  // If no obvious root found, use node with lowest generation
+  if (!root) {
+    root = Array.from(map.values()).reduce((min, node) => 
+      (!min || (node.generation < min.generation)) ? node : min
+    , null);
+  }
+
+  console.log("Found root node:", root);
+  return root;
 };

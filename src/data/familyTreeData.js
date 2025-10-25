@@ -8,6 +8,7 @@ export const familyTreeData = {
     job: 'Nông dân',
     generation: 1,
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    marriageStatus: 'married', // 'single', 'married', 'divorced', 'widowed'
     spouse: { 
         id: 'g1-1-s', 
         name: 'Trần Thị Lan', 
@@ -16,7 +17,8 @@ export const familyTreeData = {
         deathYear: 2005, 
         job: 'Nội trợ', 
         generation: 1,
-        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+        marriageStatus: 'married'
     },
     children: [
         {
@@ -27,6 +29,7 @@ export const familyTreeData = {
             job: 'Giáo viên',
             generation: 2,
             avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+            marriageStatus: 'married',
             spouse: { 
                 id: 'g2-1-s', 
                 name: 'Trần Thị Mai', 
@@ -34,7 +37,8 @@ export const familyTreeData = {
                 birthYear: 1948, 
                 job: 'Giáo viên', 
                 generation: 2,
-                avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face'
+                avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+                marriageStatus: 'married'
             },
             children: [
                 {
@@ -45,6 +49,7 @@ export const familyTreeData = {
                     job: 'Kỹ sư',
                     generation: 3,
                     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+                    marriageStatus: 'married',
                     spouse: { 
                         id: 'g3-1-s', 
                         name: 'Lê Thị Hương', 
@@ -52,7 +57,8 @@ export const familyTreeData = {
                         birthYear: 1972, 
                         job: 'Bác sĩ', 
                         generation: 3,
-                        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+                        avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+                        marriageStatus: 'married'
                     },
                     children: [
                         { 
@@ -62,7 +68,8 @@ export const familyTreeData = {
                             birthYear: 1995, 
                             job: 'Lập trình viên', 
                             generation: 4,
-                            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
+                            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+                            marriageStatus: 'single' // Chưa kết hôn - có thể thêm vợ/chồng
                         },
                         { 
                             id: 'g4-2', 
@@ -71,7 +78,8 @@ export const familyTreeData = {
                             birthYear: 1998, 
                             job: 'Thiết kế', 
                             generation: 4,
-                            avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+                            avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+                            marriageStatus: 'single' // Chưa kết hôn - có thể thêm vợ/chồng
                         }
                     ]
                 },
@@ -83,6 +91,7 @@ export const familyTreeData = {
                     job: 'Bác sĩ',
                     generation: 3,
                     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+                    marriageStatus: 'divorced', // Đã ly hôn - có thể thêm vợ/chồng mới
                     spouse: { 
                         id: 'g3-2-s', 
                         name: 'Phạm Văn Tuấn', 
@@ -90,7 +99,8 @@ export const familyTreeData = {
                         birthYear: 1973, 
                         job: 'Doanh nhân', 
                         generation: 3,
-                        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face'
+                        avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+                        marriageStatus: 'divorced'
                     },
                     children: []
                 }
@@ -104,6 +114,7 @@ export const familyTreeData = {
             job: 'Y tá',
             generation: 2,
             avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+            marriageStatus: 'married',
             spouse: { 
                 id: 'g2-2-s', 
                 name: 'Hoàng Văn Minh', 
@@ -111,7 +122,8 @@ export const familyTreeData = {
                 birthYear: 1948, 
                 job: 'Kỹ sư', 
                 generation: 2,
-                avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face'
+                avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+                marriageStatus: 'married'
             },
             children: [
                 {
@@ -122,6 +134,7 @@ export const familyTreeData = {
                     job: 'Kinh doanh',
                     generation: 3,
                     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                    marriageStatus: 'married',
                     spouse: { 
                         id: 'g3-3-s', 
                         name: 'Vũ Thị Thảo', 
@@ -129,7 +142,8 @@ export const familyTreeData = {
                         birthYear: 1982, 
                         job: 'Giáo viên', 
                         generation: 3,
-                        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face'
+                        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+                        marriageStatus: 'married'
                     },
                     children: [
                         { 
@@ -139,7 +153,8 @@ export const familyTreeData = {
                             birthYear: 2005, 
                             job: 'Học sinh', 
                             generation: 4,
-                            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+                            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+                            marriageStatus: 'single' // Chưa kết hôn - có thể thêm vợ/chồng
                         }
                     ]
                 }

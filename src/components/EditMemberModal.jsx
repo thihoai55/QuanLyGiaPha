@@ -1,4 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getMemberById, familyMembersData } from '../data/familyMembersData';
+
+// Try to find a nested spouse object (or top-level member) by id inside familyMembersData
+function findPersonByIdInData(id) {
+  if (!id) return null;
+  // First try top-level entries
+  const top = familyMembersData.find(m => m.id === id);
+  if (top) return top;
+  // Otherwise search nested spouse objects
+  for (const m of familyMembersData) {
+    if (m.spouse && m.spouse.id === id) return m.spouse;
+  }
+  return null;
+}
 
 function toInputDate(dateStr) {
   if (!dateStr) return '';
@@ -47,6 +61,7 @@ function toDisplayDate(inputDate) {
 export default function EditMemberModal({ open, onClose, member, onSubmit }) {
   const [activeTab, setActiveTab] = useState('basic');
   const [isDeceased, setIsDeceased] = useState(!!member?.deathYear);
+  const [marriageStatus, setMarriageStatus] = useState(member?.marriageStatus || 'single');
   const [basic, setBasic] = useState({
     lastMiddleName: '',
     firstName: '',
@@ -80,10 +95,92 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
       job: member.job || '',
       education: member.education || ''
     });
+    setMarriageStatus(member.marriageStatus || 'single');
     setIsDeceased(!!member.deathYear);
-    setRelations({ parent: member.parentName || '', spouse: member.spouseName || '' });
+    // Resolve parent(s) and spouse display names from available fields
+    let parentLabel = '';
+    if (member.parentName) {
+      parentLabel = member.parentName;
+    } else if (Array.isArray(member.parents) && member.parents.length > 0) {
+      const names = member.parents.map(pid => {
+        const p = findPersonByIdInData(pid) || getMemberById(pid);
+        return p ? p.name : pid;
+      }).filter(Boolean);
+      parentLabel = names.join(' & ');
+    }
+
+    let spouseLabel = '';
+    if (member.spouseName) {
+      spouseLabel = member.spouseName;
+    } else if (member.spouse) {
+      // spouse may be an object or an id
+      if (typeof member.spouse === 'string') {
+        const s = findPersonByIdInData(member.spouse) || getMemberById(member.spouse);
+        spouseLabel = s ? s.name : member.spouse;
+      } else if (typeof member.spouse === 'object' && member.spouse.name) {
+        spouseLabel = member.spouse.name;
+      }
+    }
+
+    // If this member itself is a spouse node (id ends with -s), try to find their partner and parents
+    if (!spouseLabel && typeof member.id === 'string' && member.id.endsWith('-s')) {
+      // find main partner (top-level node whose spouse.id === member.id)
+      const partner = familyMembersData.find(m => m.spouse && m.spouse.id === member.id) || null;
+      if (partner) {
+        spouseLabel = partner.name;
+        // if no parentLabel, try to resolve partner.parents as this spouse may share parents via partner
+        if (!parentLabel && Array.isArray(partner.parents) && partner.parents.length > 0) {
+          const names = partner.parents.map(pid => {
+            const p = findPersonByIdInData(pid) || getMemberById(pid);
+            return p ? p.name : pid;
+          }).filter(Boolean);
+          parentLabel = names.join(' & ');
+        }
+      }
+    }
+
+    setRelations({ parent: parentLabel || '', spouse: spouseLabel || '' });
     setDeathDate(member.deathYear ? `${member.deathYear}-01-01` : '');
   }, [open, member]);
+
+  // Compute spouse label dynamically (fallback) — used so that when member is married
+  // we display their partner even if relations.spouse is currently empty.
+  const computeSpouseLabel = () => {
+    if (!member) return '';
+
+    // Determine effective marriage status (prefer modal state if user changed it)
+    const effectiveStatus = marriageStatus || member.marriageStatus || 'single';
+    if (effectiveStatus !== 'married') return '';
+
+    // If the user already typed a spouse value in relations, show that first
+    if (relations.spouse) return relations.spouse;
+
+    // Prefer the original source entry from familyMembersData when available (covers top-level family members)
+    const source = familyMembersData.find(m => m.id === member.id) || member;
+
+    if (source.spouseName) return source.spouseName;
+
+    if (source.spouse) {
+      if (typeof source.spouse === 'string') {
+        const s = findPersonByIdInData(source.spouse) || getMemberById(source.spouse);
+        if (s) return s.name || String(source.spouse);
+        return source.spouse;
+      }
+      if (typeof source.spouse === 'object' && source.spouse.name) return source.spouse.name;
+    }
+
+    // If this member is actually a spouse node (id endsWith '-s'), find its owner
+    if (typeof member.id === 'string' && member.id.endsWith('-s')) {
+      const partner = familyMembersData.find(m => m.spouse && m.spouse.id === member.id) || null;
+      if (partner) return partner.name;
+    }
+
+    // Lastly, try to find any top-level owner who references this member as spouse
+    const owner = familyMembersData.find(m => (m.spouse && m.spouse.id === member.id) || m.spouse === member.id);
+    if (owner) return owner.name;
+
+    return '';
+  };
 
   const stop = (e) => e.stopPropagation();
 
@@ -102,6 +199,7 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
       address: basic.birthPlace,
       job: basic.job,
       education: basic.education,
+      marriageStatus: marriageStatus,
       deathYear: isDeceased && deathDate ? Number((deathDate || '').slice(0, 4)) : undefined,
       parentName: relations.parent,
       spouseName: relations.spouse,
@@ -117,7 +215,7 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
           @keyframes modalIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
           .tab-btn { background:#fff; border:1px solid #e5e7eb; padding:10px 16px; border-radius:12px; cursor:pointer; display:flex; align-items:center; gap:8px; color:#374151; font-weight:600 }
           .tab-btn.active { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.15); color:#111827 }
-          .field { background:#fff; border:1px solid #f59e0b; border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:8px }
+          .field { background:#fff; border:1px solid #f3f4f6; border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:8px }
           .field input, .field select, .field textarea { border:none; outline:none; width:100%; background:transparent }
           .field i { color:#f59e0b }
           .label { font-size:13px; color:#6b7280; margin-bottom:6px; font-weight:600 }
@@ -171,8 +269,12 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
               </div>
               <div>
                 <div className="label">Giới tính *</div>
-                <div className="field"><i className="bi-gender-ambiguous" /><select value={basic.gender} onChange={e => setBasic(prev => ({ ...prev, gender: e.target.value }))}><option value="" disabled>Chọn giới tính</option><option value="male">Nam</option><option value="female">Nữ</option></select></div>
+                        <div className="field"><i className="bi-gender-ambiguous" /><select value={basic.gender} onChange={e => setBasic(prev => ({ ...prev, gender: e.target.value }))}><option value="" disabled>Chọn giới tính</option><option value="male">Nam</option><option value="female">Nữ</option></select></div>
               </div>
+                      <div>
+                        <div className="label">Tình trạng hôn nhân</div>
+                        <div className="field"><i className="bi-heart" /><select value={marriageStatus} onChange={e => setMarriageStatus(e.target.value)}><option value="single">Độc thân</option><option value="married">Đã kết hôn</option><option value="divorced">Đã ly hôn</option><option value="widowed">Góa</option></select></div>
+                      </div>
               <div>
                 <div className="label">Thế hệ *</div>
                 <div className="field"><i className="bi-diagram-3" /><select value={basic.generation} onChange={e => setBasic(prev => ({ ...prev, generation: e.target.value }))}><option value="" disabled>Chọn đời</option>{Array.from({ length: 20 }, (_, i) => i + 1).map(g => (<option key={g} value={g}>Đời {g}</option>))}</select></div>
@@ -249,14 +351,18 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
               <div>
                 <div className="label">Cha/Mẹ</div>
                 <div className="field" style={{ justifyContent: 'space-between' }}>
-                  <input placeholder="Chọn cha hoặc mẹ" defaultValue={member.parentName || ''} />
+                  <input placeholder="Chọn cha hoặc mẹ" value={relations.parent} onChange={e => setRelations(prev => ({ ...prev, parent: e.target.value }))} />
                   <i className="bi-caret-down" style={{ color: '#9ca3af' }} />
                 </div>
               </div>
               <div>
                 <div className="label">Vợ/Chồng</div>
                 <div className="field" style={{ justifyContent: 'space-between' }}>
-                  <input placeholder="Chọn vợ hoặc chồng" defaultValue={member.spouseName || ''} />
+                  <input
+                    placeholder="Chọn vợ hoặc chồng"
+                    value={relations.spouse || (marriageStatus === 'married' ? computeSpouseLabel() : '')}
+                    onChange={e => setRelations(prev => ({ ...prev, spouse: e.target.value }))}
+                  />
                   <i className="bi-caret-down" style={{ color: '#9ca3af' }} />
                 </div>
               </div>
@@ -279,7 +385,7 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
                   </div>
                   <div className="rel-row">
                     <div className="rel-label"><i className="bi-heart" style={{ color: '#f59e0b' }} /> Vợ/Chồng</div>
-                    <div className="rel-badge">{relations.spouse || member.spouseName || 'Chưa chọn'}</div>
+          <div className="rel-badge">{relations.spouse || (member.marriageStatus === 'married' || marriageStatus === 'married' ? computeSpouseLabel() : '') || member.spouseName || 'Chưa chọn'}</div>
                   </div>
                 </div>
               </div>
