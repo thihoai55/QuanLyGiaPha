@@ -1150,6 +1150,7 @@ export default function FamilyTree() {
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
         member={selectedMember}
+        familyData={familyData} 
         onSubmit={(updated) => {
           setFamilyData(prev => {
             const root = JSON.parse(JSON.stringify(prev));

@@ -80,6 +80,8 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
   useEffect(() => {
     if (!open || !member) return;
     setActiveTab('basic');
+    
+    // 1. SET TRẠNG THÁI CƠ BẢN (Giữ nguyên)
     const nameParts = (member.name || '').trim().split(/\s+/);
     const rawBirth = member.birthDate || '';
     const yearOnlyMatch = String(rawBirth).match(/^(\d{4})$/);
@@ -95,92 +97,105 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
       job: member.job || '',
       education: member.education || ''
     });
-    setMarriageStatus(member.marriageStatus || 'single');
+    
+    // Lấy tình trạng hôn nhân từ member prop làm giá trị khởi tạo
+    const currentMarriageStatus = member.marriageStatus || 'single';
+    setMarriageStatus(currentMarriageStatus);
     setIsDeceased(!!member.deathYear);
-    // Resolve parent(s) and spouse display names from available fields
+    setDeathDate(member.deathYear ? `${member.deathYear}-01-01` : '');
+
+    // 2. SET TRẠNG THÁI GIA ĐÌNH (LOGIC MỚI)
     let parentLabel = '';
-    if (member.parentName) {
-      parentLabel = member.parentName;
-    } else if (Array.isArray(member.parents) && member.parents.length > 0) {
-      const names = member.parents.map(pid => {
-        const p = findPersonByIdInData(pid) || getMemberById(pid);
-        return p ? p.name : pid;
-      }).filter(Boolean);
-      parentLabel = names.join(' & ');
-    }
-
     let spouseLabel = '';
-    if (member.spouseName) {
-      spouseLabel = member.spouseName;
-    } else if (member.spouse) {
-      // spouse may be an object or an id
-      if (typeof member.spouse === 'string') {
-        const s = findPersonByIdInData(member.spouse) || getMemberById(member.spouse);
-        spouseLabel = s ? s.name : member.spouse;
-      } else if (typeof member.spouse === 'object' && member.spouse.name) {
-        spouseLabel = member.spouse.name;
-      }
-    }
+    const isBloodRelative = !member.id.endsWith('-s');
 
-    // If this member itself is a spouse node (id ends with -s), try to find their partner and parents
-    if (!spouseLabel && typeof member.id === 'string' && member.id.endsWith('-s')) {
-      // find main partner (top-level node whose spouse.id === member.id)
-      const partner = familyMembersData.find(m => m.spouse && m.spouse.id === member.id) || null;
-      if (partner) {
-        spouseLabel = partner.name;
-        // if no parentLabel, try to resolve partner.parents as this spouse may share parents via partner
-        if (!parentLabel && Array.isArray(partner.parents) && partner.parents.length > 0) {
+    if (isBloodRelative) {
+      // === CASE 1: MEMBER LÀ NGƯỜI RUỘT (ví dụ: chị Linh) ===
+      
+      // 1. TÌM CHA/MẸ (Logic cũ vẫn ổn)
+      if (member.parentName) {
+        parentLabel = member.parentName;
+      } else if (Array.isArray(member.parents) && member.parents.length > 0) {
+        const names = member.parents.map(pid => {
+          const p = findPersonByIdInData(pid) || getMemberById(pid);
+          return p ? p.name : pid;
+        }).filter(Boolean);
+        parentLabel = names.join(' & ');
+      }
+
+      // 2. TÌM VỢ/CHỒNG (Dựa trên spouseLinks VÀ tình trạng hôn nhân)
+      if (currentMarriageStatus === 'married') {
+        if (member.spouseLinks && member.spouseLinks.length > 0) {
+          const activeLink = member.spouseLinks.find(link => link.status === 'married');
+          if (activeLink && activeLink.data && activeLink.data.name) {
+            spouseLabel = activeLink.data.name;
+          }
+        }
+      }
+      // Nếu 'divorced' hoặc 'single', spouseLabel sẽ là '' (để trống)
+      
+    } else {
+      // === CASE 2: MEMBER LÀ DÂU/RỂ (ví dụ: anh Lĩnh) ===
+      // Modal này không truy cập được cây state, phải dùng logic fallback
+      
+      // 1. TÌM CHA/MẸ (Hiển thị cha mẹ của vợ/chồng họ)
+      const partner = familyMembersData.find(m => m.spouse && (m.spouse.id === member.id || m.spouse === member.id)) || null;
+      if (partner && Array.isArray(partner.parents) && partner.parents.length > 0) {
           const names = partner.parents.map(pid => {
             const p = findPersonByIdInData(pid) || getMemberById(pid);
             return p ? p.name : pid;
           }).filter(Boolean);
           parentLabel = names.join(' & ');
-        }
+      }
+
+      // 2. TÌM VỢ/CHỒNG (Partner của họ)
+      if (currentMarriageStatus === 'married') {
+          if (partner) {
+            spouseLabel = partner.name;
+          }
       }
     }
 
     setRelations({ parent: parentLabel || '', spouse: spouseLabel || '' });
-    setDeathDate(member.deathYear ? `${member.deathYear}-01-01` : '');
-  }, [open, member]);
+
+  }, [open, member]); // Chỉ chạy khi member thay đổi
+
+
+  // === THÊM MỚI: useEffect để theo dõi Tình trạng Hôn nhân ===
+  useEffect(() => {
+    // Nếu người dùng chọn KHÔNG KẾT HÔN
+    if (marriageStatus !== 'married') {
+      // Xóa tên vợ/chồng khỏi ô input
+      setRelations(prev => ({ ...prev, spouse: '' }));
+    } 
+    // Nếu người dùng chọn 'Đã kết hôn'
+    else {
+      // Thử tìm lại tên vợ/chồng đang 'married' (nếu có)
+      let activeSpouseName = '';
+      const isBloodRelative = !member.id.endsWith('-s');
+      
+      if(isBloodRelative) {
+          if (member.spouseLinks && member.spouseLinks.length > 0) {
+            const activeLink = member.spouseLinks.find(link => link.status === 'married');
+            if (activeLink && activeLink.data && activeLink.data.name) {
+              activeSpouseName = activeLink.data.name;
+            }
+          }
+      } else {
+          // Fallback cho dâu/rể
+          const partner = familyMembersData.find(m => m.spouse && (m.spouse.id === member.id || m.spouse === member.id)) || null;
+          if (partner) {
+            activeSpouseName = partner.name;
+          }
+      }
+      setRelations(prev => ({ ...prev, spouse: activeSpouseName }));
+    }
+    // Chạy lại mỗi khi state marriageStatus thay đổi
+  }, [marriageStatus, member]); // <-- Phụ thuộc vào marriageStatus
 
   // Compute spouse label dynamically (fallback) — used so that when member is married
   // we display their partner even if relations.spouse is currently empty.
-  const computeSpouseLabel = () => {
-    if (!member) return '';
-
-    // Determine effective marriage status (prefer modal state if user changed it)
-    const effectiveStatus = marriageStatus || member.marriageStatus || 'single';
-    if (effectiveStatus !== 'married') return '';
-
-    // If the user already typed a spouse value in relations, show that first
-    if (relations.spouse) return relations.spouse;
-
-    // Prefer the original source entry from familyMembersData when available (covers top-level family members)
-    const source = familyMembersData.find(m => m.id === member.id) || member;
-
-    if (source.spouseName) return source.spouseName;
-
-    if (source.spouse) {
-      if (typeof source.spouse === 'string') {
-        const s = findPersonByIdInData(source.spouse) || getMemberById(source.spouse);
-        if (s) return s.name || String(source.spouse);
-        return source.spouse;
-      }
-      if (typeof source.spouse === 'object' && source.spouse.name) return source.spouse.name;
-    }
-
-    // If this member is actually a spouse node (id endsWith '-s'), find its owner
-    if (typeof member.id === 'string' && member.id.endsWith('-s')) {
-      const partner = familyMembersData.find(m => m.spouse && m.spouse.id === member.id) || null;
-      if (partner) return partner.name;
-    }
-
-    // Lastly, try to find any top-level owner who references this member as spouse
-    const owner = familyMembersData.find(m => (m.spouse && m.spouse.id === member.id) || m.spouse === member.id);
-    if (owner) return owner.name;
-
-    return '';
-  };
+  
 
   const stop = (e) => e.stopPropagation();
 
@@ -359,9 +374,12 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
                 <div className="label">Vợ/Chồng</div>
                 <div className="field" style={{ justifyContent: 'space-between' }}>
                   <input
-                    placeholder="Chọn vợ hoặc chồng"
-                    value={relations.spouse || (marriageStatus === 'married' ? computeSpouseLabel() : '')}
+                    placeholder={marriageStatus === 'married' ? 'Chọn vợ hoặc chồng' : 'Không có'}
+                    // SỬA: Giá trị chỉ là relations.spouse (đã được useEffect xử lý)
+                    value={relations.spouse}
                     onChange={e => setRelations(prev => ({ ...prev, spouse: e.target.value }))}
+                    // SỬA: Vô hiệu hóa ô input nếu không kết hôn
+                    disabled={marriageStatus !== 'married'}
                   />
                   <i className="bi-caret-down" style={{ color: '#9ca3af' }} />
                 </div>
@@ -381,11 +399,13 @@ export default function EditMemberModal({ open, onClose, member, onSubmit }) {
                   </div>
                   <div className="rel-row">
                     <div className="rel-label"><i className="bi-person" style={{ color: '#f59e0b' }} /> Cha/Mẹ</div>
-                    <div className="rel-badge">{relations.parent || member.parentName || 'Chưa chọn'}</div>
+                    {/* SỬA: Hiển thị relations.parent, fallback "Chưa chọn" */}
+                    <div className="rel-badge">{relations.parent || 'Chưa chọn'}</div>
                   </div>
                   <div className="rel-row">
                     <div className="rel-label"><i className="bi-heart" style={{ color: '#f59e0b' }} /> Vợ/Chồng</div>
-          <div className="rel-badge">{relations.spouse || (member.marriageStatus === 'married' || marriageStatus === 'married' ? computeSpouseLabel() : '') || member.spouseName || 'Chưa chọn'}</div>
+                    {/* SỬA: Hiển thị relations.spouse, fallback "Chưa chọn" */}
+                    <div className="rel-badge">{relations.spouse || 'Chưa chọn'}</div>
                   </div>
                 </div>
               </div>
