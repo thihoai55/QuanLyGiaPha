@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 // lucide-react icons removed in favor of Bootstrap Icons
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -172,210 +172,201 @@ export default function FamilyTree() {
   // Hàm thêm vợ/chồng mới
   const handleAddSpouse = (memberId, newSpouse) => {
     console.log('[FamilyTree] handleAddSpouse called for', memberId, newSpouse);
+    
     setFamilyData(prev => {
+      // 1. Clone cây
       const root = JSON.parse(JSON.stringify(prev));
-      
-      // Tìm node cần thêm vợ/chồng
+
+      // 2. Tìm node "chủ" (owner)
       let targetNode = null;
-      const findTargetNode = (node) => {
-        if (!node) return;
-        if (node.id === memberId) {
-          targetNode = node;
-          return;
-        }
-        if (node.children) {
-          node.children.forEach(findTargetNode);
-        }
-        if (node.spouseLinks) {
-          node.spouseLinks.forEach(link => {
-            if (link.data && link.data.id === memberId) {
-              // If the memberId corresponds to a spouse, treat the owner (node) as the target
-              targetNode = node;
-            }
-          });
-        }
-      };
-      findTargetNode(root);
+      const ownerInfo = findSpouseOwner(root, memberId);
+      
+      if (ownerInfo) {
+        targetNode = ownerInfo.ownerNode;
+      } else {
+        targetNode = findNodeById(root, memberId); 
+      }
 
       if (!targetNode) {
         console.error('Target member not found:', memberId);
         return prev;
       }
 
-      // Tạo node vợ/chồng mới
+      // 3. Tạo node vợ/chồng mới
       const newSpouseNode = {
         ...newSpouse,
-        id: `${memberId}-s-${Date.now()}`,
+        id: `${targetNode.id}-s-${Date.now()}`, 
         generation: targetNode.generation,
         marriageStatus: 'married',
         isInLaw: true,
         isFamilyMember: false
       };
 
-      // Cập nhật trạng thái của cả hai người
+      // 4. Cập nhật trạng thái của owner
       targetNode.marriageStatus = 'married';
-      
-      // Khởi tạo spouseLinks nếu chưa có
+
       if (!targetNode.spouseLinks) {
         targetNode.spouseLinks = [];
       }
 
-      // Tất cả các spouseLinks hiện tại chuyển sang trạng thái ly hôn
+      // 5. Xử lý ly hôn vợ/chồng cũ và ĐỒNG BỘ HÓA
       targetNode.spouseLinks.forEach(link => {
         if (link.status === 'married') {
           link.status = 'divorced';
           link.isActiveMarriage = false;
+          
+          if (link.data) {
+            link.data.marriageStatus = 'divorced';
+          }
+          
+          const exSpouseNode = findNodeById(root, link.id);
+          if (exSpouseNode) {
+            exSpouseNode.marriageStatus = 'divorced';
+          }
         }
       });
 
-      // Tạo marriage link mới
+      // 6. SỬA: Xác định bên (side) cho vợ/chồng mới
+      // Kiểm tra xem đã có ai ở bên phải chưa (thường là người đầu tiên)
+      const hasRightLink = targetNode.spouseLinks.some(link => link.side === 'right');
+      
+      // Nếu bên phải đã có người, thêm người mới vào bên trái
+      const newSide = hasRightLink ? 'left' : 'right';
+
+      console.log(`[FamilyTree] Determining side. Has right link: ${hasRightLink}. Assigning new spouse to: ${newSide}`);
+
+      // 7. Tạo marriage link mới
       const marriageLink = {
         id: newSpouseNode.id,
         status: 'married',
-        side: 'right', // Mặc định bên phải
+        side: newSide, // <-- SỬ DỤNG BIẾN newSide
         data: newSpouseNode,
         children: [],
         isActiveMarriage: true
       };
 
-      // Thêm vào spouseLinks
+      // 8. Thêm vào spouseLinks của owner
       targetNode.spouseLinks.push(marriageLink);
 
-      // Lưu vào localStorage
+      // 9. Lưu và cập nhật state
       try {
         localStorage.setItem('familyData', JSON.stringify(root));
       } catch (e) {
         console.error('Error saving to localStorage:', e);
       }
 
-      console.log('[FamilyTree] after addSpouse, targetNode:', targetNode, 'root snippet:', { id: root?.id });
+      const updatedOwnerNode = findNodeById(root, targetNode.id);
+      setSelectedMember(updatedOwnerNode);
 
-      // Cập nhật selectedMember lên node mới trong cây để UI sidepanel đồng bộ
-      try {
-        const updated = findNodeById(root, memberId) || (findSpouseOwner(root, memberId)?.ownerNode) || null;
-        if (updated) setSelectedMember(updated);
-      } catch (e) {
-        // ignore
-      }
-
-      return root;
+      return root; // Trả về cây đã cập nhật
     });
+    
+    setShowAddSpouseModal(false);
   };
 
   // Hàm thêm con mới
-  const handleAddChild = (memberId, newChild) => {
-    console.log('[FamilyTree] handleAddChild called for', memberId, newChild);
-    setFamilyData(prev => {
+  const handleAddChild = (memberId, newChildData) => {
+    // SỬA 1: Dùng memberId, không dùng selectedMember
+    if (!memberId) return;
+
+    setFamilyData((prev) => {
+      // Clone cây hiện tại để tránh mutate trực tiếp
       const root = JSON.parse(JSON.stringify(prev));
 
-      // Tìm cha/mẹ
-      let parentNode = null;
-      const findParent = (node) => {
-        if (!node) return;
-        if (node.id === memberId) {
-          parentNode = node;
-          return;
-        }
-        if (node.children) {
-          node.children.forEach(findParent);
-        }
+      // Hàm đệ quy tìm parent node (giữ nguyên)
+      const findParentNode = (node, id) => {
+        if (node.id === id) return node;
+
+        // Tìm trong spouseLinks
         if (node.spouseLinks) {
-          node.spouseLinks.forEach(link => {
-            if (link.data && link.data.id === memberId) {
-              parentNode = link.data;
+          for (let link of node.spouseLinks) {
+            if (link.id === id) return node; // Trả về owner node, logic này ok
+            const foundInSpouse = findParentNode(link.data || {}, id);
+            if (foundInSpouse) return foundInSpouse;
+            if (link.children) {
+              for (let ch of link.children) {
+                const foundChild = findParentNode(ch, id);
+                if (foundChild) return foundChild;
+              }
             }
-          });
+          }
         }
+
+        // Tìm trong children
+        if (node.children) {
+          for (let ch of node.children) {
+            const foundChild = findParentNode(ch, id);
+            if (foundChild) return foundChild;
+          }
+        }
+
+        return null;
       };
-      findParent(root);
+
+      // SỬA 2: Dùng memberId (từ tham số) để tìm
+      const parentNode = findParentNode(root, memberId);
 
       if (!parentNode) {
-        console.error('Parent not found:', memberId);
+        console.warn('Không tìm thấy node cha:', memberId);
         return prev;
       }
 
-      // Tạo node con mới
-      const childNode = {
-        ...newChild,
-        id: `${memberId}-c-${Date.now()}`,
-        generation: (parentNode.generation || 0) + 1,
-        marriageStatus: 'single',
+      // SỬA 3: Lấy thông tin từ 'newChildData' (tham số thứ 2)
+      const newChild = {
+        id: `${memberId}-c-${Date.now()}`, // Tạo ID con dựa trên ID cha
+        name: newChildData.name,           // Lấy tên từ newChildData
+        gender: newChildData.gender,         // Lấy giới tính từ newChildData
+        birthYear: newChildData.birthYear || "",
+        job: newChildData.job || "",
+        marriageStatus: "single",
         children: [],
-        spouseLinks: []
+        spouseLinks: [],
+        generation: (parentNode.generation || 0) + 1,
       };
 
-      // Nếu memberId là một node vợ/chồng (spouse) thì attach con vào spouseLinks của owner
-      const spouseOwner = findSpouseOwner(root, memberId);
-      if (spouseOwner && spouseOwner.ownerNode && spouseOwner.link) {
-        const owner = spouseOwner.ownerNode;
-        const link = spouseOwner.link;
-        link.children = link.children || [];
-        // đồng bộ generation với owner + 1
-        childNode.generation = (owner.generation || 0) + 1;
-        link.children.push(childNode);
+      // Logic gắn con (giữ nguyên, dù có thể vẫn chưa xử lý đúng ca dâu/rể)
+      const activeSpouse = parentNode.spouseLinks?.find(l => l.status === "married");
+      if (activeSpouse) {
+        if (!activeSpouse.children) activeSpouse.children = [];
+        activeSpouse.children.push(newChild);
       } else {
-        // Tìm marriage link hiện tại (đang kết hôn)
-        const currentMarriage = parentNode.spouseLinks?.find(link => link.status === 'married');
-        
-        if (currentMarriage) {
-          // Thêm con vào marriage link hiện tại
-          if (!currentMarriage.children) {
-            currentMarriage.children = [];
-          }
-          currentMarriage.children.push(childNode);
-        } else {
-          // Nếu không có marriage link, thêm vào children của parent
-          if (!parentNode.children) {
-            parentNode.children = [];
-          }
-          parentNode.children.push(childNode);
-        }
+        if (!parentNode.children) parentNode.children = [];
+        parentNode.children.push(newChild);
       }
 
-      // Lưu vào localStorage
-      try {
-        localStorage.setItem('familyData', JSON.stringify(root));
-      } catch (e) {
-        console.error('Error saving to localStorage:', e);
-      }
+      // Cập nhật selectedMember và re-render (giữ nguyên)
+      const updatedTree = JSON.parse(JSON.stringify(root));
 
-      console.log('[FamilyTree] after addChild, parentNode:', parentNode && { id: parentNode.id, spouseLinks: parentNode.spouseLinks?.length }, 'added child id:', childNode.id);
+      // Cập nhật selectedMember (có thể muốn chọn đứa con mới thay vì cha)
+      // Thử tìm node con vừa thêm:
+      const addedChildNode = findNodeById(updatedTree, newChild.id);
+      setSelectedMember(addedChildNode || findNodeById(updatedTree, parentNode.id));
 
-      // Cập nhật selectedMember để UI phản ánh ngay thay đổi
-      try {
-        const spouseOwnerForChild = findSpouseOwner(root, memberId);
-        if (spouseOwnerForChild && spouseOwnerForChild.ownerNode) {
-          setSelectedMember(spouseOwnerForChild.ownerNode);
-        } else {
-          const updatedParent = findNodeById(root, memberId) || null;
-          if (updatedParent) setSelectedMember(updatedParent);
-        }
-      } catch (e) {
-        // ignore
-      }
-
-      return root;
+      return updatedTree;
     });
+
+    setShowAddChildModal(false);
   };
+
 
   const MemberCard = ({ member, isRoot = false }) => {
     const isAlive = !member.deathYear;
-    const age = member.deathYear 
+    const age = member.deathYear
       ? parseInt(member.deathYear) - parseInt(member.birthYear)
       : new Date().getFullYear() - parseInt(member.birthYear);
 
     const isMale = member.gender === 'male';
-  const bg = isMale ? '#eef2ff' : '#fde7ef';
+    const bg = isMale ? '#eef2ff' : '#fde7ef';
     const bd = isMale ? '#60a5fa' : '#f472b6';
-  const av = isMale ? '#3b82f6' : '#ec4899';
+    const av = isMale ? '#3b82f6' : '#ec4899';
 
-  return (
-    <div style={{
-      width: '260px',
-      minHeight: '170px',
-      borderRadius: '18px',
-      padding: '16px',
-      border: '2px solid ' + bd,
+    return (
+      <div style={{
+        width: '260px',
+        minHeight: '170px',
+        borderRadius: '18px',
+        padding: '16px',
+        border: '2px solid ' + bd,
         background: isRoot ? 'linear-gradient(135deg,#fef3c7,#fde68a)' : bg,
         boxShadow: '0 10px 24px rgba(2,6,23,0.08)',
         cursor: 'pointer',
@@ -383,94 +374,94 @@ export default function FamilyTree() {
         transform: selectedMember?.id === member.id ? 'scale(1.02)' : 'scale(1)',
         borderColor: selectedMember?.id === member.id ? '#f59e0b' : bd
       }}
-      onClick={() => handleMemberClick(member)}
-      onMouseEnter={(e) => { 
-        e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'; 
-        e.currentTarget.style.boxShadow = '0 12px 28px rgba(2,6,23,0.12)'; 
-      }}
-      onMouseLeave={(e) => { 
-        e.currentTarget.style.transform = selectedMember?.id === member.id ? 'scale(1.02)' : 'translateY(0) scale(1)'; 
-        e.currentTarget.style.boxShadow = '0 10px 24px rgba(2,6,23,0.08)'; 
-    }}>
-      {/* Header: avatar lớn + tên + năm sinh-mất */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '68px', height: '68px', borderRadius: '999px',
-            background: av, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px'
-          }}><Icon name="person-fill" size={28} color="#fff" /></div>
-          <div>
+        onClick={() => handleMemberClick(member)}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+          e.currentTarget.style.boxShadow = '0 12px 28px rgba(2,6,23,0.12)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = selectedMember?.id === member.id ? 'scale(1.02)' : 'translateY(0) scale(1)';
+          e.currentTarget.style.boxShadow = '0 10px 24px rgba(2,6,23,0.08)';
+        }}>
+        {/* Header: avatar lớn + tên + năm sinh-mất */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '68px', height: '68px', borderRadius: '999px',
+              background: av, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px'
+            }}><Icon name="person-fill" size={28} color="#fff" /></div>
+            <div>
               <div style={{ fontWeight: 800, fontSize: '20px' }}>{member.name}</div>
-            <div style={{ color: '#6b7280', fontSize: '16px', marginTop: '2px' }}>
+              <div style={{ color: '#6b7280', fontSize: '16px', marginTop: '2px' }}>
                 {member.birthYear} {member.deathYear && `- ${member.deathYear}`}
               </div>
             </div>
           </div>
           {isRoot && (
-          <span style={{
-            fontSize: '12px', padding: '4px 10px', borderRadius: '999px', background: '#eef2ff',
-            color: '#3730a3', border: '1px solid #c7d2fe'
+            <span style={{
+              fontSize: '12px', padding: '4px 10px', borderRadius: '999px', background: '#eef2ff',
+              color: '#3730a3', border: '1px solid #c7d2fe'
             }}>Tổ tiên</span>
           )}
-      </div>
+        </div>
 
-      {/* Nghề nghiệp */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px' }}>
-        <span style={{ fontSize: '18px' }}>💼</span>
+        {/* Nghề nghiệp */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px' }}>
+          <span style={{ fontSize: '18px' }}>💼</span>
           <span style={{ color: '#6b7280', fontSize: '16px' }}>{member.job || '—'}</span>
-      </div>
+        </div>
 
-      {/* Footer: Đời x (trái) + Tuổi/Đã mất (phải) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-        <span style={{
-          fontSize: '14px', padding: '10px 16px', borderRadius: '16px', background: '#fff',
-          border: '2px solid #ede9fe', color: '#111827', boxShadow: 'inset 0 0 0 1px #f4f4f5'
+        {/* Footer: Đời x (trái) + Tuổi/Đã mất (phải) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+          <span style={{
+            fontSize: '14px', padding: '10px 16px', borderRadius: '16px', background: '#fff',
+            border: '2px solid #ede9fe', color: '#111827', boxShadow: 'inset 0 0 0 1px #f4f4f5'
           }}>Đời {member.generation}</span>
           {member.deathYear ? (
-          <span style={{
-            fontSize: '14px', padding: '10px 16px', borderRadius: '16px', background: '#eef2ff',
-            color: '#111827', border: '1px solid #e5e7eb'
-          }}>Đã mất</span>
-        ) : (
-          <span style={{
-            fontSize: '14px', padding: '10px 16px', borderRadius: '16px', background: '#ecfeff',
-            color: '#065f46', border: '1px solid #99f6e4'
-          }}>{age ? `${age} tuổi` : '—'}</span>
+            <span style={{
+              fontSize: '14px', padding: '10px 16px', borderRadius: '16px', background: '#eef2ff',
+              color: '#111827', border: '1px solid #e5e7eb'
+            }}>Đã mất</span>
+          ) : (
+            <span style={{
+              fontSize: '14px', padding: '10px 16px', borderRadius: '16px', background: '#ecfeff',
+              color: '#065f46', border: '1px solid #99f6e4'
+            }}>{age ? `${age} tuổi` : '—'}</span>
+          )}
+        </div>
+
+        {/* Trạng thái hôn nhân */}
+        {member.marriageStatus && (
+          <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'center' }}>
+            <span style={{
+              fontSize: '12px', padding: '6px 12px', borderRadius: '12px',
+              background: member.marriageStatus === 'married' ? '#dcfce7' :
+                member.marriageStatus === 'divorced' ? '#fef3c7' : '#e0f2fe',
+              color: member.marriageStatus === 'married' ? '#166534' :
+                member.marriageStatus === 'divorced' ? '#92400e' : '#0c4a6e',
+              border: '1px solid',
+              borderColor: member.marriageStatus === 'married' ? '#bbf7d0' :
+                member.marriageStatus === 'divorced' ? '#fde68a' : '#93c5fd'
+            }}>
+              {member.marriageStatus === 'married' ? 'Đã kết hôn' :
+                member.marriageStatus === 'divorced' ? 'Đã ly hôn' : 'Độc thân'}
+            </span>
+          </div>
+        )}
+
+        {/* Hiển thị vai trò trong gia đình */}
+        {member.id.endsWith('-s') && (
+          <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'center' }}>
+            <span style={{
+              fontSize: '10px', padding: '4px 8px', borderRadius: '8px',
+              background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb'
+            }}>
+              {member.gender === 'male' ? 'Rể' : 'Dâu'}
+            </span>
+          </div>
         )}
       </div>
-
-      {/* Trạng thái hôn nhân */}
-      {member.marriageStatus && (
-        <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'center' }}>
-          <span style={{
-            fontSize: '12px', padding: '6px 12px', borderRadius: '12px',
-            background: member.marriageStatus === 'married' ? '#dcfce7' : 
-                       member.marriageStatus === 'divorced' ? '#fef3c7' : '#e0f2fe',
-            color: member.marriageStatus === 'married' ? '#166534' : 
-                   member.marriageStatus === 'divorced' ? '#92400e' : '#0c4a6e',
-            border: '1px solid',
-            borderColor: member.marriageStatus === 'married' ? '#bbf7d0' : 
-                        member.marriageStatus === 'divorced' ? '#fde68a' : '#93c5fd'
-          }}>
-            {member.marriageStatus === 'married' ? 'Đã kết hôn' : 
-             member.marriageStatus === 'divorced' ? 'Đã ly hôn' : 'Độc thân'}
-          </span>
-        </div>
-      )}
-
-      {/* Hiển thị vai trò trong gia đình */}
-      {member.id.endsWith('-s') && (
-        <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'center' }}>
-          <span style={{
-            fontSize: '10px', padding: '4px 8px', borderRadius: '8px',
-            background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb'
-          }}>
-            {member.gender === 'male' ? 'Rể' : 'Dâu'}
-          </span>
-        </div>
-      )}
-    </div>
-  );
+    );
   };
 
   const findNodeById = (root, id) => {
@@ -558,9 +549,9 @@ export default function FamilyTree() {
             <MemberCard member={pairLeft} />
 
             {/* Đường kết nối giữa cặp đôi */}
-            <div style={{ 
-              width: '2px', 
-              height: '28px', 
+            <div style={{
+              width: '2px',
+              height: '28px',
               background: isCurrentMarriage ? '#10b981' : '#f59e0b', // Màu xanh cho hôn nhân hiện tại, cam cho ly hôn
               borderRadius: '2px',
               opacity: isCurrentMarriage ? 1 : 0.7 // Giảm độ đậm cho quan hệ ly hôn
@@ -574,9 +565,9 @@ export default function FamilyTree() {
           {coupleChildren && coupleChildren.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '24px' }}>
               {/* Đường dọc từ cặp đôi xuống con cái */}
-              <div style={{ 
-                width: '2px', 
-                height: '24px', 
+              <div style={{
+                width: '2px',
+                height: '24px',
                 background: '#fbbf24',
                 borderRadius: '2px',
                 opacity: isCurrentMarriage ? 1 : 0.7 // Giảm độ đậm cho quan hệ ly hôn
@@ -589,45 +580,45 @@ export default function FamilyTree() {
                       <div style={{ position: 'relative', width: '100%', height: '16px' }}>
                         {/* Đường ngang nối các con */}
                         {index === 0 && (
-                          <div style={{ 
-                            position: 'absolute', 
-                            top: 0, 
-                            left: '50%', 
-                            width: '50%', 
-                            height: '1px', 
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: '50%',
+                            width: '50%',
+                            height: '1px',
                             background: '#fbbf24',
-                            opacity: isCurrentMarriage ? 1 : 0.7 
+                            opacity: isCurrentMarriage ? 1 : 0.7
                           }} />
                         )}
                         {index === coupleChildren.length - 1 && (
-                          <div style={{ 
-                            position: 'absolute', 
-                            top: 0, 
-                            right: '50%', 
-                            width: '50%', 
-                            height: '1px', 
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: '50%',
+                            width: '50%',
+                            height: '1px',
                             background: '#fbbf24',
-                            opacity: isCurrentMarriage ? 1 : 0.7 
+                            opacity: isCurrentMarriage ? 1 : 0.7
                           }} />
                         )}
                         {index > 0 && index < coupleChildren.length - 1 && (
-                          <div style={{ 
-                            position: 'absolute', 
-                            top: 0, 
-                            left: 0, 
-                            width: '100%', 
-                            height: '1px', 
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '1px',
                             background: '#fbbf24',
-                            opacity: isCurrentMarriage ? 1 : 0.7 
+                            opacity: isCurrentMarriage ? 1 : 0.7
                           }} />
                         )}
                         {/* Đường dọc xuống mỗi con */}
-                        <div style={{ 
-                          width: '1px', 
-                          height: '16px', 
-                          background: '#fbbf24', 
+                        <div style={{
+                          width: '1px',
+                          height: '16px',
+                          background: '#fbbf24',
                           margin: '0 auto',
-                          opacity: isCurrentMarriage ? 1 : 0.7 
+                          opacity: isCurrentMarriage ? 1 : 0.7
                         }} />
                       </div>
                     )}
@@ -703,7 +694,7 @@ export default function FamilyTree() {
           // Collect children from spouseLinks based on marriage status
           let marriedLinkChildren = [];
           let divorcedLinkChildren = [];
-          
+
           if (member.spouseLinks && member.spouseLinks.length > 0) {
             member.spouseLinks.forEach(link => {
               if (link.children && link.children.length > 0) {
@@ -735,12 +726,12 @@ export default function FamilyTree() {
             return (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '24px' }}>
                 {/* Vertical line from couple to horizontal line */}
-                <div style={{ 
-                  width: '2px', 
-                  height: '24px', 
-                  background: '#fbbf24', 
+                <div style={{
+                  width: '2px',
+                  height: '24px',
+                  background: '#fbbf24',
                   borderRadius: '2px',
-                  opacity: isDivorced ? 0.7 : 1 
+                  opacity: isDivorced ? 0.7 : 1
                 }} />
 
                 {/* Horizontal line connecting to children */}
@@ -750,44 +741,44 @@ export default function FamilyTree() {
                       {children.length > 1 && (
                         <div style={{ position: 'relative', width: '100%', height: '16px' }}>
                           {index === 0 && (
-                            <div style={{ 
-                              position: 'absolute', 
-                              top: 0, 
-                              left: '50%', 
-                              width: '50%', 
-                              height: '1px', 
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: '50%',
+                              width: '50%',
+                              height: '1px',
                               background: '#fbbf24',
-                              opacity: isDivorced ? 0.7 : 1 
+                              opacity: isDivorced ? 0.7 : 1
                             }} />
                           )}
                           {index === children.length - 1 && (
-                            <div style={{ 
-                              position: 'absolute', 
-                              top: 0, 
-                              right: '50%', 
-                              width: '50%', 
-                              height: '1px', 
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              right: '50%',
+                              width: '50%',
+                              height: '1px',
                               background: '#fbbf24',
-                              opacity: isDivorced ? 0.7 : 1 
+                              opacity: isDivorced ? 0.7 : 1
                             }} />
                           )}
                           {index > 0 && index < children.length - 1 && (
-                            <div style={{ 
-                              position: 'absolute', 
-                              top: 0, 
-                              left: 0, 
-                              width: '100%', 
-                              height: '1px', 
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '1px',
                               background: '#fbbf24',
-                              opacity: isDivorced ? 0.7 : 1 
+                              opacity: isDivorced ? 0.7 : 1
                             }} />
                           )}
-                          <div style={{ 
-                            width: '1px', 
-                            height: '16px', 
-                            background: '#fbbf24', 
+                          <div style={{
+                            width: '1px',
+                            height: '16px',
+                            background: '#fbbf24',
                             margin: '0 auto',
-                            opacity: isDivorced ? 0.7 : 1 
+                            opacity: isDivorced ? 0.7 : 1
                           }} />
                         </div>
                       )}
@@ -823,7 +814,7 @@ export default function FamilyTree() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          
+
           <div>
             <div style={{ fontSize: '24px', fontWeight: '800', color: '#111827' }}>Cây gia phả</div>
             <div style={{ color: '#6b7280', marginTop: '6px', fontSize: '13px' }}>Sơ đồ cây gia đình họ Nguyễn</div>
@@ -843,21 +834,21 @@ export default function FamilyTree() {
         </div>
       </div>
 
-        {/* Toolbar */}
+      {/* Toolbar */}
       <div style={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: '12px', padding: '16px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
           {/* Search */}
           <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}>
-            <Icon name="search" size={16} color="#9ca3af" />
-          </span>
-            <input 
+            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}>
+              <Icon name="search" size={16} color="#9ca3af" />
+            </span>
+            <input
               placeholder="Tìm kiếm thành viên..."
               style={{ width: '95%', height: '40px', padding: '0 12px 0 36px', borderRadius: '10px', border: '1px solid #fbbf24', outline: 'none', background: '#fff' }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-    </div>
+          </div>
 
           {/* Filter */}
           <div style={{ display: 'flex', border: '1px solid #fbbf24', borderRadius: '8px', overflow: 'hidden', background: '#fff' }}>
@@ -887,7 +878,7 @@ export default function FamilyTree() {
             Xuất
           </button>
         </div>
-    </div>
+      </div>
 
       {/* Main Content */}
       <div style={{ display: 'flex', gap: '16px', minHeight: '0' }}>
@@ -899,10 +890,10 @@ export default function FamilyTree() {
               <p>Vui lòng kiểm tra console để biết thêm chi tiết.</p>
             </div>
           ) : (
-            <div 
-              style={{ 
-                minWidth: 'max-content', 
-                display: 'flex', 
+            <div
+              style={{
+                minWidth: 'max-content',
+                display: 'flex',
                 justifyContent: 'center',
                 transform: `scale(${zoomLevel / 100})`,
                 transformOrigin: "top center",
@@ -929,11 +920,11 @@ export default function FamilyTree() {
                     <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
                       Đời {selectedMember.generation}
                       {selectedMember.id.endsWith('-s') && (
-                        <span style={{ 
-                          marginLeft: '8px', 
-                          padding: '2px 6px', 
-                          background: '#f3f4f6', 
-                          color: '#6b7280', 
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 6px',
+                          background: '#f3f4f6',
+                          color: '#6b7280',
                           borderRadius: '4px',
                           fontSize: '10px'
                         }}>
@@ -1009,19 +1000,19 @@ export default function FamilyTree() {
                   <Icon name="pencil-square" size={16} color="#fff" />
                   Chỉnh sửa thông tin
                 </button>
-                
+
                 {/* Nút thêm vợ/chồng - chỉ hiển thị cho người ruột khi có thể thêm */}
                 {canAddSpouse(selectedMember) && (
-                  <button 
+                  <button
                     onClick={() => setShowAddSpouseModal(true)}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px 16px', 
-                      background: 'linear-gradient(90deg,#ec4899,#be185d)', 
-                      color: '#fff', 
-                      border: 'none', 
-                      borderRadius: '8px', 
-                      cursor: 'pointer', 
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      background: 'linear-gradient(90deg,#ec4899,#be185d)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
                       fontWeight: '600',
                       display: 'flex',
                       alignItems: 'center',
@@ -1055,19 +1046,19 @@ export default function FamilyTree() {
                     Người dâu/rể đã ly hôn không có quyền thêm vợ/chồng mới
                   </div>
                 )}
-                
+
                 {/* Nút thêm con - hiển thị khi có thể thêm */}
                 {canAddChild(selectedMember) && (
-                  <button 
+                  <button
                     onClick={() => setShowAddChildModal(true)}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px 16px', 
-                      background: 'linear-gradient(90deg,#10b981,#059669)', 
-                      color: '#fff', 
-                      border: 'none', 
-                      borderRadius: '8px', 
-                      cursor: 'pointer', 
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      background: 'linear-gradient(90deg,#10b981,#059669)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
                       fontWeight: '600',
                       display: 'flex',
                       alignItems: 'center',
@@ -1212,8 +1203,8 @@ export default function FamilyTree() {
                 });
 
                 if (needsUpdate) {
-                  node = { 
-                    ...node, 
+                  node = {
+                    ...node,
                     spouseLinks: updatedSpouseLinks,
                     // Cập nhật marriageStatus của node chính nếu cần
                     marriageStatus: updated.marriageStatus || node.marriageStatus
@@ -1230,7 +1221,7 @@ export default function FamilyTree() {
             };
 
             const newTree = updateNodeAndSpouses(root);
-              // Nếu cập nhật trạng thái hôn nhân, đồng bộ hóa với đối tác (owner/spouse) và trong spouseLinks
+            // Nếu cập nhật trạng thái hôn nhân, đồng bộ hóa với đối tác (owner/spouse) và trong spouseLinks
             try {
               if (updated.marriageStatus) {
                 const targetStatus = updated.marriageStatus;
@@ -1337,13 +1328,13 @@ export default function FamilyTree() {
             try {
               const refreshed = findNodeById(newTree, updated.id) || (findSpouseOwner(newTree, updated.id)?.ownerNode) || null;
               if (refreshed) setSelectedMember(refreshed);
-            } catch (e) {}
+            } catch (e) { }
 
             return newTree;
-            });
+          });
 
-            setShowEditModal(false);
-          }}
+          setShowEditModal(false);
+        }}
       />
     </div>
   );
