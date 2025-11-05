@@ -105,7 +105,7 @@ export const genealogies = [
     category: "Nông nghiệp",
     lastUpdated: "1 ngày trước",
     imageUrl:
-      "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXJtZXIlMjBmaWVsZHxlbnwxfHx8fDE3NjA2MjE1NzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/07/hinh-anh-gia-dinh-hanh-phuc.jpg",
     tags: ["nông nghiệp", "truyền thống", "nam định"],
   },
   {

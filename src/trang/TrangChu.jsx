@@ -82,7 +82,7 @@ function HeroCoDien() {
         </div>
         <div style={{ position: 'relative' }}>
           <div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.18)', border: '1px solid #f1e3b4' }}>
-            <div style={{ width: '100%', height: 360, background: 'url(https://images.unsplash.com/photo-1476610182048-b716b8518aae?q=80&w=1600&auto=format&fit=crop) center/cover no-repeat' }} />
+            <div style={{ width: '100%', height: 360, background: 'url(https://cdn.s99.vn/ss1/prod/product/34eb15234b4d36fe0fd56e88ba267ea7.jpg) center/cover no-repeat' }} />
           </div>
           <div style={{ position: 'absolute', left: '10%', right: '10%', bottom: -16, height: 32, background: 'linear-gradient(90deg, rgba(253,230,138,0.0), rgba(253,230,138,0.6), rgba(253,230,138,0.0))', filter: 'blur(6px)', borderRadius: 999 }} />
         </div>
