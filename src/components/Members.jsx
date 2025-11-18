@@ -15,6 +15,7 @@ export default function Members() {
   const [openView, setOpenView] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [openEdit, setOpenEdit] = useState(false);
+  const [viewHistory, setViewHistory] = useState([]); // stack lưu lịch sử id đã xem
 
   const maxGeneration = useMemo(() => {
     return Math.max(...members.map(m => m.generation || 0), 0);
@@ -36,6 +37,36 @@ export default function Members() {
 
     return list;
   }, [query, generation, gender, life, sortBy, members]);
+
+  const handleNavigateToId = (id) => {
+    if (!id) return;
+    const target = members.find(m => m.id === id);
+    if (target) {
+      if (selectedMember?.id && selectedMember.id !== target.id) {
+        setViewHistory(prev => [...prev, selectedMember.id]);
+      }
+      setSelectedMember(target);
+    }
+  };
+
+  const handleOpenView = (member) => {
+    setViewHistory([]);
+    setSelectedMember(member);
+    setOpenView(true);
+  };
+
+  const handleBackInModal = () => {
+    setViewHistory(prev => {
+      if (!prev.length) return prev;
+      const history = [...prev];
+      const lastId = history.pop();
+      const target = members.find(m => m.id === lastId);
+      if (target) {
+        setSelectedMember(target);
+      }
+      return history;
+    });
+  };
 
   // Style cho select có icon mũi tên và không viền đen
   const selectStyle = {
@@ -361,7 +392,7 @@ export default function Members() {
               <div style={{ height: 1, background: '#e5e7eb', margin: '16px 0' }} />
 
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => { setSelectedMember(m); setOpenView(true); }} style={{ flex: 1, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <button onClick={() => handleOpenView(m)} style={{ flex: 1, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <i className="bi-eye" /> Xem
                 </button>
                 <button onClick={() => { setSelectedMember(m); setOpenEdit(true); }} style={{ flex: 1, background: '#f97316', border: '1px solid #fb923c', color: '#fff', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -372,7 +403,14 @@ export default function Members() {
           </div>
         ))}
       </div>
-      <ViewMemberModal open={openView} onClose={() => setOpenView(false)} member={selectedMember} />
+      <ViewMemberModal
+        open={openView}
+        onClose={() => setOpenView(false)}
+        member={selectedMember}
+        onNavigateToId={handleNavigateToId}
+        canGoBack={viewHistory.length > 0}
+        onBack={handleBackInModal}
+      />
       <EditMemberModal open={openEdit} onClose={() => setOpenEdit(false)} member={selectedMember} onSubmit={(updated) => {
         setMembers(prev => prev.map(m => (m.id && updated.id ? m.id === updated.id : m.name === selectedMember?.name) ? { ...m, ...updated } : m));
       }} />

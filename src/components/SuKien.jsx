@@ -129,7 +129,7 @@ function SuKien() {
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
     const eventTypes = useMemo(() => eventTypesData, []);
-    const events = useMemo(() => eventsData, []);
+    const [events, setEvents] = useState(() => eventsData.slice());
 
     const upcomingEvents = useMemo(() => events.filter(e => e.status === 'upcoming'), [events]);
     const sortedEvents = useMemo(() => {
@@ -220,8 +220,7 @@ function SuKien() {
     };
 
     const handleCreateEvent = (event) => {
-        // Here you would typically save to your data source
-        console.log('New event created:', event);
+        setEvents(prev => [...prev, event]);
         setIsAddOpen(false);
     };
 

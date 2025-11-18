@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function ViewMemberModal({ open, onClose, member }) {
+export default function ViewMemberModal({ open, onClose, member, onNavigateToId, canGoBack, onBack }) {
   const [activeTab, setActiveTab] = useState('basic');
   if (!open || !member) return null;
 
@@ -27,6 +27,25 @@ export default function ViewMemberModal({ open, onClose, member }) {
 
         {/* Header */}
         <div style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #f3f4f6' }}>
+          {canGoBack && (
+            <button
+              onClick={e => { e.stopPropagation(); onBack && onBack(); }}
+              title="Quay lại"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: '1px solid #e5e7eb',
+                background: '#fff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <i className="bi bi-arrow-left" />
+            </button>
+          )}
           <div style={{ width: 40, height: 40, borderRadius: 999, background: '#fff', border: '6px solid #fef3c7', display: 'grid', placeItems: 'center', fontSize: 22 }}>
             {member.gender === 'male' ? '👤' : '👩'}
           </div>
@@ -137,11 +156,55 @@ export default function ViewMemberModal({ open, onClose, member }) {
                   </div>
                   <div className="rel-row">
                     <div className="rel-label"><i className="bi-person" style={{ color: '#f59e0b' }} /> Cha/Mẹ</div>
-                    <div className="rel-badge">{member.parentName || 'Chưa chọn'}</div>
+                    <div
+                      className="rel-badge"
+                      style={{ cursor: member.parentIds && member.parentIds.length ? 'pointer' : 'default' }}
+                      onClick={() => {
+                        if (!onNavigateToId || !member.parentIds || !member.parentIds.length) return;
+                        onNavigateToId(member.parentIds[0]);
+                      }}
+                    >
+                      {member.parentName || 'Chưa chọn'}
+                    </div>
                   </div>
                   <div className="rel-row">
                     <div className="rel-label"><i className="bi-heart" style={{ color: '#f59e0b' }} /> Vợ/Chồng</div>
-                    <div className="rel-badge">{member.spouseName || 'Chưa chọn'}</div>
+                    <div
+                      className="rel-badge"
+                      style={{ cursor: member.spouseId ? 'pointer' : 'default' }}
+                      onClick={() => {
+                        if (!onNavigateToId || !member.spouseId) return;
+                        onNavigateToId(member.spouseId);
+                      }}
+                    >
+                      {member.spouseName || 'Chưa chọn'}
+                    </div>
+                  </div>
+                  <div className="rel-row">
+                    <div className="rel-label"><i className="bi-people" style={{ color: '#f59e0b' }} /> Anh/Chị/Em</div>
+                    <div
+                      className="rel-badge"
+                      style={{ cursor: member.siblingIds && member.siblingIds.length ? 'pointer' : 'default' }}
+                      onClick={() => {
+                        if (!onNavigateToId || !member.siblingIds || !member.siblingIds.length) return;
+                        onNavigateToId(member.siblingIds[0]);
+                      }}
+                    >
+                      {member.siblingNames || 'Chưa có'}
+                    </div>
+                  </div>
+                  <div className="rel-row">
+                    <div className="rel-label"><i className="bi-people" style={{ color: '#f59e0b' }} /> Con cái</div>
+                    <div
+                      className="rel-badge"
+                      style={{ cursor: member.childrenIds && member.childrenIds.length ? 'pointer' : 'default' }}
+                      onClick={() => {
+                        if (!onNavigateToId || !member.childrenIds || !member.childrenIds.length) return;
+                        onNavigateToId(member.childrenIds[0]);
+                      }}
+                    >
+                      {member.childrenNames || 'Chưa có'}
+                    </div>
                   </div>
                 </div>
               </div>

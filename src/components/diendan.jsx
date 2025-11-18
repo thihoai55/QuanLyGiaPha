@@ -100,7 +100,7 @@ function DienDan() {
     const [postsModal, setPostsModal] = useState({ open: false, title: '', items: [] });
     const [showCreatePost, setShowCreatePost] = useState(false);
 
-    const posts = useMemo(() => forumPosts, []);
+    const [posts, setPosts] = useState(() => forumPosts.slice());
     const categories = useMemo(() => forumCategories, []);
 
     const filteredByCategory = useMemo(() => {
@@ -297,7 +297,13 @@ function DienDan() {
             </button>
 
             {/* Create Post Modal */}
-            <CreatePost open={showCreatePost} onOpenChange={setShowCreatePost} />
+            <CreatePost
+                open={showCreatePost}
+                onOpenChange={setShowCreatePost}
+                onCreatePost={(post) => {
+                    setPosts(prev => [post, ...prev]);
+                }}
+            />
         </div>
     );
 }

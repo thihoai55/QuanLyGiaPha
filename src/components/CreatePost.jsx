@@ -13,7 +13,7 @@ const categories = [
   { id: "photos", name: "Ảnh & Video", color: "bg-indigo-500" },
 ];
 
-export function CreatePost({ open, onOpenChange }) {
+export function CreatePost({ open, onOpenChange, onCreatePost }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("");
@@ -37,8 +37,36 @@ export function CreatePost({ open, onOpenChange }) {
   };
 
   const handleSubmit = () => {
-    // Handle post submission
-    console.log({ title, content, category, tags, uploadedImages });
+    if (!title || !content || !category) return;
+
+    const selectedCategory = categories.find(cat => cat.id === category);
+    const now = new Date();
+    const initials = title
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(word => word[0]?.toUpperCase())
+      .join('') || 'US';
+
+    const post = {
+      id: Date.now().toString(),
+      title,
+      content,
+      author: 'Thành viên mới',
+      authorAvatar: initials,
+      category: selectedCategory ? selectedCategory.name : 'Khác',
+      categoryId: category,
+      replies: 0,
+      likes: 0,
+      views: 0,
+      createdAt: now.toISOString(),
+      tags,
+    };
+
+    if (typeof onCreatePost === 'function') {
+      onCreatePost(post);
+    }
+
     onOpenChange(false);
     // Reset form
     setTitle("");
