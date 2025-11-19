@@ -56,9 +56,42 @@ export default function FamilyTree() {
   const [filterGeneration, setFilterGeneration] = useState("all");
   const [showAddSpouseModal, setShowAddSpouseModal] = useState(false);
   const [showAddChildModal, setShowAddChildModal] = useState(false);
-  // Always build familyData from the source `familyMembersData` (ignore localStorage)
+  // Build familyData từ dữ liệu gốc + các thành viên động lưu trong localStorage
   const [familyData, setFamilyData] = useState(() => {
-    const initialTree = buildFamilyTree(familyMembersData);
+    let allMembers = familyMembersData;
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('extraFamilyMembers') : null;
+      if (raw) {
+        const extras = JSON.parse(raw);
+        if (Array.isArray(extras)) {
+          allMembers = [...familyMembersData, ...extras];
+        }
+      }
+    } catch (e) {
+      console.error('Error reading extraFamilyMembers from localStorage', e);
+    }
+
+    // Chuẩn hóa quan hệ cha/con: dựa vào trường parents để bổ sung children cho cha/mẹ
+    const normalizedMembers = allMembers.map(m => ({
+      ...m,
+      children: Array.isArray(m.children) ? [...m.children] : []
+    }));
+
+    normalizedMembers.forEach(member => {
+      if (Array.isArray(member.parents)) {
+        member.parents.forEach(parentId => {
+          const parent = normalizedMembers.find(p => p.id === parentId);
+          if (parent) {
+            if (!Array.isArray(parent.children)) parent.children = [];
+            if (!parent.children.includes(member.id)) {
+              parent.children.push(member.id);
+            }
+          }
+        });
+      }
+    });
+
+    const initialTree = buildFamilyTree(normalizedMembers);
 
     // Thêm các thuộc tính cần thiết cho cấu trúc mới
     const enhanceNode = (node, visited = new WeakSet()) => {

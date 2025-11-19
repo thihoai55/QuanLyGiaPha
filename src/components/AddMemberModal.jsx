@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { familyMembersData } from '../data/familyMembersData';
 
 export default function AddMemberModal({ open, onClose, onSubmit }) {
     const [activeTab, setActiveTab] = useState('basic');
@@ -15,12 +16,109 @@ export default function AddMemberModal({ open, onClose, onSubmit }) {
         education: ''
     });
     const [relations, setRelations] = useState({ parent: '', spouse: '' });
+    const [relationIds, setRelationIds] = useState({ parentId: null, spouseId: null });
 
     useEffect(() => {
-        if (open) setActiveTab('basic');
+        if (open) {
+            setActiveTab('basic');
+            setBasic({
+                lastMiddleName: '',
+                firstName: '',
+                gender: '',
+                generation: '',
+                birthDate: '',
+                birthPlace: '',
+                job: '',
+                education: ''
+            });
+            setRelations({ parent: '', spouse: '' });
+            setRelationIds({ parentId: null, spouseId: null });
+            setIsDeceased(false);
+        }
     }, [open]);
 
     const stop = (e) => e.stopPropagation();
+
+    const parentSuggestions = useMemo(() => {
+        const q = relations.parent.trim().toLowerCase();
+        if (!q) return [];
+        return familyMembersData.filter(m => (m.name || '').toLowerCase().includes(q)).slice(0, 10);
+    }, [relations.parent]);
+
+    const spouseSuggestions = useMemo(() => {
+        const q = relations.spouse.trim().toLowerCase();
+        if (!q) return [];
+        return familyMembersData
+            .filter(m => (m.name || '').toLowerCase().includes(q))
+            .filter(m => {
+                if (!basic.gender) return true;
+                if (basic.gender === 'male') return m.gender === 'female';
+                if (basic.gender === 'female') return m.gender === 'male';
+                return true;
+            })
+            .slice(0, 10);
+    }, [relations.spouse, basic.gender]);
+
+    const resolveRelationsIds = () => {
+        let parentId = null;
+        let spouseId = null;
+
+        if (relations.parent.trim()) {
+            const parent = familyMembersData.find(m => m.name === relations.parent.trim());
+            parentId = parent ? parent.id : null;
+        }
+
+        if (relations.spouse.trim()) {
+            const spouse = familyMembersData.find(m => m.name === relations.spouse.trim());
+            spouseId = spouse ? spouse.id : null;
+        }
+
+        setRelationIds({ parentId, spouseId });
+        return { parentId, spouseId };
+    };
+
+    const buildNewMember = () => {
+        const { parentId, spouseId } = resolveRelationsIds();
+
+        const fullName = `${basic.lastMiddleName} ${basic.firstName}`.trim();
+        const birthYear = basic.birthDate ? new Date(basic.birthDate).getFullYear() : undefined;
+        const currentYear = new Date().getFullYear();
+        const age = birthYear && birthYear <= currentYear ? currentYear - birthYear : undefined;
+
+        const newMember = {
+            id: `dyn-${Date.now()}`,
+            name: fullName,
+            gender: basic.gender || '',
+            generation: basic.generation ? Number(basic.generation) : undefined,
+            birthYear: birthYear,
+            birthDate: basic.birthDate || '',
+            address: basic.birthPlace || '',
+            job: basic.job || '',
+            phone: '',
+            email: '',
+            age: age,
+            marriageStatus: spouseId ? 'married' : 'single',
+            spouse: null,
+            children: [],
+            parents: parentId ? [parentId] : [],
+            siblings: [],
+            notes: '',
+        };
+
+        if (!newMember.name || !newMember.gender || !newMember.generation) {
+            return null;
+        }
+
+        return newMember;
+    };
+
+    const handleSubmit = () => {
+        const newMember = buildNewMember();
+        if (!newMember) return;
+        if (typeof onSubmit === 'function') {
+            onSubmit(newMember);
+        }
+    };
 
     if (!open) return null;
 
@@ -169,18 +267,40 @@ export default function AddMemberModal({ open, onClose, onSubmit }) {
                             <div>
                                 <div className="label">Cha/Mẹ</div>
                                 <div className="field" style={{ justifyContent: 'space-between' }}>
-                                    <input placeholder="Chọn cha hoặc mẹ" value={relations.parent} onChange={e => setRelations(prev => ({ ...prev, parent: e.target.value }))} />
+                                    <input
+                                        list="parent-options"
+                                        placeholder="Chọn cha hoặc mẹ"
+                                        value={relations.parent}
+                                        onChange={e => setRelations(prev => ({ ...prev, parent: e.target.value }))}
+                                        onBlur={resolveRelationsIds}
+                                    />
                                     <i className="bi-caret-down" style={{ color: '#9ca3af' }} />
                                 </div>
+                                <datalist id="parent-options">
+                                    {parentSuggestions.map(m => (
+                                        <option key={m.id} value={m.name} />
+                                    ))}
+                                </datalist>
                                 <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>Chọn người cha hoặc mẹ để xác định vị trí trong cây gia phả</div>
                             </div>
                             {/* Vợ/Chồng */}
                             <div>
                                 <div className="label">Vợ/Chồng</div>
                                 <div className="field" style={{ justifyContent: 'space-between' }}>
-                                    <input placeholder="Chọn vợ hoặc chồng" value={relations.spouse} onChange={e => setRelations(prev => ({ ...prev, spouse: e.target.value }))} />
+                                    <input
+                                        list="spouse-options"
+                                        placeholder="Chọn vợ hoặc chồng"
+                                        value={relations.spouse}
+                                        onChange={e => setRelations(prev => ({ ...prev, spouse: e.target.value }))}
+                                        onBlur={resolveRelationsIds}
+                                    />
                                     <i className="bi-caret-down" style={{ color: '#9ca3af' }} />
                                 </div>
+                                <datalist id="spouse-options">
+                                    {spouseSuggestions.map(m => (
+                                        <option key={m.id} value={m.name} />
+                                    ))}
+                                </datalist>
                             </div>
 
                             {/* Summary card refined */}
@@ -213,7 +333,7 @@ export default function AddMemberModal({ open, onClose, onSubmit }) {
                 {/* Footer */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: 16, borderTop: '1px solid #f3f4f6' }}>
                     <button onClick={onClose} style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#111827', padding: '10px 16px', borderRadius: 10, cursor: 'pointer', fontWeight: 600 }}>Hủy</button>
-                    <button onClick={onSubmit} style={{ background: '#f59e0b', border: '1px solid #f59e0b', color: '#fff', padding: '10px 16px', borderRadius: 10, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={handleSubmit} style={{ background: '#f59e0b', border: '1px solid #f59e0b', color: '#fff', padding: '10px 16px', borderRadius: 10, cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <i className="bi-check2" /> Thêm thành viên
                     </button>
                 </div>

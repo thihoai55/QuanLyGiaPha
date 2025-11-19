@@ -417,7 +417,39 @@ export default function Members() {
       <AddMemberModal
         open={openAddModal}
         onClose={() => setOpenAddModal(false)}
-        onSubmit={() => setOpenAddModal(false)}
+        onSubmit={(newMember) => {
+          if (!newMember) {
+            setOpenAddModal(false);
+            return;
+          }
+
+          // Cập nhật danh sách trong state
+          setMembers(prev => [...prev, {
+            id: newMember.id,
+            name: newMember.name,
+            gender: newMember.gender,
+            generation: newMember.generation,
+            age: newMember.age,
+            birthDate: newMember.birthDate,
+            address: newMember.address,
+            job: newMember.job,
+            phone: newMember.phone,
+            email: newMember.email,
+            deathYear: newMember.deathYear,
+          }]);
+
+          // Lưu thêm vào localStorage để FamilyTree có thể đọc
+          try {
+            const raw = localStorage.getItem('extraFamilyMembers');
+            const list = raw ? JSON.parse(raw) : [];
+            list.push(newMember);
+            localStorage.setItem('extraFamilyMembers', JSON.stringify(list));
+          } catch (e) {
+            console.error('Error saving extraFamilyMembers to localStorage', e);
+          }
+
+          setOpenAddModal(false);
+        }}
       />
     </div>
   );
